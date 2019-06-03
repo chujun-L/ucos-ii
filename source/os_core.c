@@ -25,7 +25,7 @@
 *       Indexed value corresponds to bit mask
 *********************************************************************************************************
 */
-
+// OSMapTbl被const修饰，因此它在ROM，它的作用是加快运算速度
 INT8U  const  OSMapTbl[]   = {0x01, 0x02, 0x04, 0x08, 0x10, 0x20, 0x40, 0x80};
 
 /*
@@ -36,7 +36,14 @@ INT8U  const  OSMapTbl[]   = {0x01, 0x02, 0x04, 0x08, 0x10, 0x20, 0x40, 0x80};
 *       Indexed value corresponds to highest priority bit position (i.e. 0..7)
 *********************************************************************************************************
 */
-
+/* 优先级判定表，它与OSMapTbl一样，用来加快运算速度
+ * y = OSUnMapTbl[OSRdyGrp]
+ * x = OSUnMapTbl[OSRdyTbl[y]]
+ * prio = (y << 3) + x
+ *
+ * OSUnMapTbl[]里面的数据计算：将0x00 ~ 0xFF每个数据中最低位为1的位数一一列举出来
+ * (核心的思想：通过查表降低运算量，从而提高实时性)
+ */
 INT8U  const  OSUnMapTbl[] = {
     0, 0, 1, 0, 2, 0, 1, 0, 3, 0, 1, 0, 2, 0, 1, 0,       /* 0x00 to 0x0F                             */
     4, 0, 1, 0, 2, 0, 1, 0, 3, 0, 1, 0, 2, 0, 1, 0,       /* 0x10 to 0x1F                             */
@@ -301,9 +308,11 @@ void  OSStart (void)
 
 
     if (OSRunning == FALSE) {
+	// 2. 读取任务的优先级    
         y             = OSUnMapTbl[OSRdyGrp];        /* Find highest priority's task priority number   */
         x             = OSUnMapTbl[OSRdyTbl[y]];
         OSPrioHighRdy = (INT8U)((y << 3) + x);
+
         OSPrioCur     = OSPrioHighRdy;
         OSTCBHighRdy  = OSTCBPrioTbl[OSPrioHighRdy]; /* Point to highest priority task ready to run    */
         OSTCBCur      = OSTCBHighRdy;
@@ -1071,7 +1080,7 @@ INT8U  OS_TCBInit (INT8U prio, OS_STK *ptos, OS_STK *pbos, INT16U id, INT32U stk
 #if OS_TASK_DEL_EN > 0
         ptcb->OSTCBDelReq    = OS_NO_ERR;
 #endif
-
+	// 1 对优先级进行预计算
         ptcb->OSTCBY         = prio >> 3;                  /* Pre-compute X, Y, BitX and BitY          */
         ptcb->OSTCBBitY      = OSMapTbl[ptcb->OSTCBY];
         ptcb->OSTCBX         = prio & 0x07;
@@ -1103,8 +1112,11 @@ INT8U  OS_TCBInit (INT8U prio, OS_STK *ptos, OS_STK *pbos, INT16U id, INT32U stk
             OSTCBList->OSTCBPrev = ptcb;
         }
         OSTCBList               = ptcb;
+
+	// 1.1 设定任务的优先级
         OSRdyGrp               |= ptcb->OSTCBBitY;         /* Make task ready to run                   */
         OSRdyTbl[ptcb->OSTCBY] |= ptcb->OSTCBBitX;
+
         OS_EXIT_CRITICAL();
         return (OS_NO_ERR);
     }

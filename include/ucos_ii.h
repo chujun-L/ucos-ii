@@ -449,7 +449,9 @@ OS_EXT  INT8U             OSLockNesting;            /* Multitasking lock nesting
 OS_EXT  INT8U             OSPrioCur;                /* Priority of current task                        */
 OS_EXT  INT8U             OSPrioHighRdy;            /* Priority of highest priority task               */
 
+// 它将任务就绪表的元素进行分组
 OS_EXT  INT8U             OSRdyGrp;                        /* Ready list group                         */
+// 任务就绪表,它位于RAM
 OS_EXT  INT8U             OSRdyTbl[OS_RDY_TBL_SIZE];       /* Table of tasks which are ready to run    */
 
 OS_EXT  BOOLEAN           OSRunning;                       /* Flag indicating that kernel is running   */
